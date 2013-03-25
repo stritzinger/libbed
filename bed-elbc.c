@@ -314,8 +314,20 @@ static void elbc_chip_detected(bed_device *bed)
 	volatile bed_elbc *elbc = self->elbc;
 
 	if (nand->ecc_correctable_bits_per_512_bytes == ELBC_ECC_CORRECTABLE_BITS_PER_512_BYTES) {
+		assert(nand->boxed_read_page == NULL);
+		assert(nand->boxed_write_page == NULL);
 		self->ecc_mode_auto = ELBC_ECC_MODE_CHECK_AND_GENERATE;
+		nand->oob_ecc_ranges = NULL;
+		if (bed_nand_has_large_pages(bed)) {
+			bed->oob_free_size = 51;
+			nand->oob_free_ranges = elbc_oob_free_ranges_64_eccm_1;
+		} else {
+			bed->oob_free_size = 12;
+			nand->oob_free_ranges = elbc_oob_free_ranges_16_eccm_0;
+		}
 	} else {
+		assert(nand->boxed_read_page != NULL);
+		assert(nand->boxed_write_page != NULL);
 		self->ecc_mode_auto = ELBC_ECC_MODE_NONE;
 	}
 
@@ -326,15 +338,6 @@ static void elbc_chip_detected(bed_device *bed)
 		bed_nand_needs_3_page_cycles(bed),
 		ELBC_ECC_MODE_NONE
 	);
-
-	nand->oob_ecc_ranges = NULL;
-	if (bed_nand_has_large_pages(bed)) {
-		bed->oob_free_size = 51;
-		nand->oob_free_ranges = elbc_oob_free_ranges_64_eccm_1;
-	} else {
-		bed->oob_free_size = 12;
-		nand->oob_free_ranges = elbc_oob_free_ranges_16_eccm_0;
-	}
 }
 
 static void elbc_init_context(
@@ -383,6 +386,7 @@ static void elbc_init_context(
 	self->elbc = config->elbc;
 	self->base_address = config->base_address;
 	self->bank = config->bank;
+	self->fmr = ELBC_FMR_CWTO(0xf);
 }
 
 bed_status bed_elbc_init(
