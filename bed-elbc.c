@@ -383,6 +383,7 @@ static void elbc_init_context(
 	self->elbc = config->elbc;
 	self->base_address = config->base_address;
 	self->bank = config->bank;
+	self->fmr = ELBC_FMR_CWTO(0xf);
 }
 
 bed_status bed_elbc_init(
