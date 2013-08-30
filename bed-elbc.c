@@ -83,7 +83,6 @@ static void elbc_write_buffer(bed_device *bed, const uint8_t *data, size_t n)
 {
 	bed_elbc_context *self = elbc_get_context(bed);
 	uint8_t *buf = &self->current_buffer[self->current_buffer_offset];
-	volatile bed_elbc *elbc = self->elbc;
 
 	assert(n > 0);
 	assert(self->current_buffer_offset <= 2048 + 64);
@@ -347,7 +346,6 @@ static void elbc_init_context(
 {
 	bed_device *bed = &self->bed;
 	bed_nand_context *nand = &self->nand;
-	uint16_t chip_count = 1;
 
 	memset(self, 0, sizeof(*self));
 

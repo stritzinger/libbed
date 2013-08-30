@@ -62,6 +62,7 @@ typedef struct {
 	uint8_t *area;
 } nand_sim_context;
 
+#ifndef NDEBUG
 static bool is_cmd(int ctrl)
 {
 	return (ctrl & (BED_NAND_CTRL_ALE | BED_NAND_CTRL_CLE))
@@ -73,6 +74,7 @@ static bool is_addr(int ctrl)
 	return (ctrl & (BED_NAND_CTRL_ALE | BED_NAND_CTRL_CLE))
 		== (BED_NAND_CTRL_ALE);
 }
+#endif
 
 static void expect_none_state(nand_sim_context *sim, nand_sim_state next)
 {
@@ -184,7 +186,7 @@ static void nand_sim_control(bed_device *bed, int data, int ctrl)
 			start_sequence(bed, data, ctrl);
 			break;
 		case EXPECT_NONE:
-			assert(data == BED_NAND_CMD_NONE);
+			assert((unsigned) data == BED_NAND_CMD_NONE);
 			sim->state = sim->next_state;
 			break;
 		case ADDR_BYTE:
@@ -226,7 +228,7 @@ static void nand_sim_control(bed_device *bed, int data, int ctrl)
 			expect_none_state(sim, sim->next_state);
 			break;
 		case READ_ID_CHECK_ADDR:
-			assert(data == BED_NAND_CMD_NONE);
+			assert((unsigned) data == BED_NAND_CMD_NONE);
 			switch (sim->column) {
 				case 0x00:
 					sim->io_mode = SIM_IO_ID;
@@ -312,6 +314,7 @@ static void nand_sim_read_buffer(bed_device *bed, uint8_t *data, size_t n)
 			break;
 	}
 
+	(void) size_max;
 	assert(sim->column < size_max);
 	assert(n <= size_max - sim->column);
 
@@ -389,6 +392,7 @@ static void nand_sim_write_buffer(bed_device *bed, const uint8_t *data, size_t n
 
 	assert(sim->io_mode == SIM_IO_DATA);
 
+	(void) size_max;
 	assert(sim->column < size_max);
 	assert(n <= size_max - sim->column);
 

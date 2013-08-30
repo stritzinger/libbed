@@ -99,7 +99,7 @@ typedef enum {
 
 static inline bool bed_nand_is_real_data(int data)
 {
-	return (data & BED_NAND_CMD_VIRTUAL) == 0;
+	return ((unsigned) data & BED_NAND_CMD_VIRTUAL) == 0;
 }
 
 #define BED_NAND_MFR_SPANSION 0x01
