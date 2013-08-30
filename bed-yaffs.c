@@ -10,7 +10,7 @@
  * Copyright (c) 2012-2013 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <info@embedded-brains.de>
