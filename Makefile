@@ -20,6 +20,7 @@ LIB_PIECES += bed-nand-device-info-16-bit-1-8-v
 LIB_PIECES += bed-nand-device-info-16-bit-3-3-v
 LIB_PIECES += bed-nand-device-info-all
 LIB_PIECES += bed-nand-set-default-oob-layout
+LIB_PIECES += bed-nor-simulator
 LIB_PIECES += bed-null-partition
 LIB_PIECES += bed-ones-per-byte
 LIB_PIECES += bed-ecc-hamming-256-calc
@@ -39,6 +40,7 @@ TEST_PIECES += test-init
 TEST_PIECES += test-ecc
 TEST_PIECES += test-bed
 TEST_PIECES += test-nand
+TEST_PIECES += test-nor-simulator
 
 LIBS =
 
