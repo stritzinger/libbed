@@ -31,9 +31,11 @@ bed_status bed_read_oob(
 	bed_device *bed = part->bed;
 
 	if (bed_is_range_valid(part, addr, n) && bed_is_oob_request_valid(bed, oob)) {
-		(*bed->obtain)(bed);
-		status = (*bed->read_oob)(bed, part->begin + addr, data, n, oob);
-		(*bed->release)(bed);
+		if (n > 0) {
+			(*bed->obtain)(bed);
+			status = (*bed->read_oob)(bed, part->begin + addr, data, n, oob);
+			(*bed->release)(bed);
+		}
 	} else {
 		status = BED_ERROR_INVALID_ADDRESS;
 	}
