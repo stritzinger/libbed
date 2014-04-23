@@ -200,22 +200,32 @@ static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 	uint8_t *oob = nand->oob_buffer;
 	int i;
 
-	for (i = 0; i < self->chunk_count; ++i) {
-		mlc->ecc_auto_dec = 0;
+	if (mode == BED_OOB_MODE_AUTO) {
+		for (i = 0; i < self->chunk_count; ++i) {
+			mlc->ecc_auto_dec = 0;
 
-		mlc_wait(mlc, MLC_ISR_CONTROLLER_READY | MLC_ISR_NAND_READY);
+			mlc_wait(mlc, MLC_ISR_CONTROLLER_READY | MLC_ISR_NAND_READY);
 
-		status = mlc_check_ecc_status(status, nand, mlc->isr);
+			status = mlc_check_ecc_status(status, nand, mlc->isr);
 
-		mlc_read(&mlc->buff, data, MLC_CHUNK_DATA_SIZE);
-		mlc_read(&mlc->buff, oob, MLC_CHUNK_OOB_SIZE);
+			mlc_read(&mlc->buff, data, MLC_CHUNK_DATA_SIZE);
+			mlc_read(&mlc->buff, oob, MLC_CHUNK_OOB_SIZE);
 
-		data += MLC_CHUNK_DATA_SIZE;
-		oob += MLC_CHUNK_OOB_SIZE;
-	}
+			data += MLC_CHUNK_DATA_SIZE;
+			oob += MLC_CHUNK_OOB_SIZE;
+		}
+	} else if (mode == BED_OOB_MODE_RAW) {
+		for (i = 0; i < self->chunk_count; ++i) {
+			mlc_wait(mlc, MLC_ISR_NAND_READY);
 
-	if (mode != BED_OOB_MODE_AUTO) {
-		status = BED_SUCCESS;
+			mlc_read(&mlc->data, data, MLC_CHUNK_DATA_SIZE);
+			mlc_read(&mlc->data, oob, MLC_CHUNK_OOB_SIZE);
+
+			data += MLC_CHUNK_DATA_SIZE;
+			oob += MLC_CHUNK_OOB_SIZE;
+		}
+	} else {
+		status = BED_ERROR_OOB_MODE;
 	}
 
 	return status;
