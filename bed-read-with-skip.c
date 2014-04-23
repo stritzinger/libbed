@@ -30,9 +30,9 @@ static bed_status read_with_skip(
 	bed_address area_end = area_begin + area_size;
 	uint32_t block_size = bed->block_size;
 	uint16_t page_size = bed->page_size;
-	uint16_t oob_size = bed->oob_size;
+	uint16_t oob_size = bed->oob_free_size;
 	bed_oob_request oob = {
-		.mode = BED_OOB_MODE_RAW,
+		.mode = BED_OOB_MODE_AUTO,
 		.offset = 0,
 		.size = oob_size,
 		.data = oob_buffer

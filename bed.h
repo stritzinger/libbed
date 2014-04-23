@@ -240,6 +240,25 @@ typedef bool (*bed_read_process)(
   size_t m
 );
 
+/**
+ * @brief Reads the valid pages of a partition and skips bad blocks.
+ *
+ * The pages are read with ECC correction turned on (BED_OOB_MODE_AUTO).
+ *
+ * @param[in] part The partition.
+ * @param[in] process The page process function.
+ * @param[in] process_arg The argument for the page process function.
+ * @param[in] page_buffer Buffer to store the page content.  It must be large
+ * enough for the pages of this partition.
+ * @param[in] oob_buffer Buffer to store the OOB content.  It must be large
+ * enough for the OOB areas of this partition.
+ *
+ * @retval BED_SUCCESS Successful operation.
+ * @retval BED_ERROR_STOPPED The process function requested a stop.
+ * @retval BED_ERROR_ECC_UNCORRECTABLE Uncorrectable ECC error during a page
+ * read.
+ * @retval other Other error status codes depending on the driver.
+ */
 bed_status bed_read_with_skip(
 	const bed_partition *part,
 	bed_read_process process,
