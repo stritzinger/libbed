@@ -7,7 +7,7 @@
  */
 
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -262,6 +262,49 @@ typedef bool (*bed_read_process)(
 bed_status bed_read_with_skip(
 	const bed_partition *part,
 	bed_read_process process,
+	void *process_arg,
+	void *page_buffer,
+	void *oob_buffer
+);
+
+/**
+ * @brief Read all process function.
+ *
+ * @see bed_read_all().
+ *
+ * @retval false Continue processing.
+ * @retval true Stop processing.
+ */
+typedef bool (*bed_read_all_process)(
+  void *process_arg,
+  bed_address addr,
+  bed_status is_block_valid_status,
+  bed_status page_read_status,
+  void *data,
+  size_t n,
+  void *oob,
+  size_t m
+);
+
+/**
+ * @brief Reads all pages of a partition.
+ *
+ * @param[in] part The partition.
+ * @param[in] oob_mode The OOB mode used to read the pages.
+ * @param[in] process The page process function.
+ * @param[in] process_arg The argument for the page process function.
+ * @param[in] page_buffer Buffer to store the page content.  It must be large
+ * enough for the pages of this partition.
+ * @param[in] oob_buffer Buffer to store the OOB content.  It must be large
+ * enough for the OOB areas of this partition.
+ *
+ * @retval BED_SUCCESS Successful operation.
+ * @retval BED_ERROR_STOPPED The process function requested a stop.
+ */
+bed_status bed_read_all(
+	const bed_partition *part,
+	bed_oob_mode oob_mode,
+	bed_read_all_process process,
 	void *process_arg,
 	void *page_buffer,
 	void *oob_buffer

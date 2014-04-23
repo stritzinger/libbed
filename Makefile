@@ -27,6 +27,7 @@ LIB_PIECES += bed-ecc-hamming-256-calc
 LIB_PIECES += bed-ecc-hamming-256-corr
 LIB_PIECES += bed-write-with-skip
 LIB_PIECES += bed-read-with-skip
+LIB_PIECES += bed-read-all
 LIB_PIECES += bed-print-bad-blocks
 LIB_PIECES += bed-vprintf-printer
 LIB_PIECES += bed-test-if-erased
