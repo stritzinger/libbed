@@ -437,6 +437,16 @@ static inline uint32_t bed_end(const bed_partition *part)
 	return part->begin + part->size;
 }
 
+static inline bed_address bed_align_up(bed_address addr, bed_address mask)
+{
+	return (addr + mask) & ~mask;
+}
+
+static inline bed_address bed_align_down(bed_address addr, bed_address mask)
+{
+	return addr & ~mask;
+}
+
 static inline int bed_page_shift(
 	const bed_partition *part
 )
@@ -444,6 +454,16 @@ static inline int bed_page_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->page_shift;
+}
+
+static inline bed_address bed_page_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->page_shift) - one;
 }
 
 static inline bed_address bed_page_to_address(
@@ -462,6 +482,22 @@ static inline bed_address bed_address_to_page(
 	return addr >> bed_page_shift(part);
 }
 
+static inline bed_address bed_address_align_up_to_page(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_page_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_page(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_page_mask(part));
+}
+
 static inline int bed_block_shift(
 	const bed_partition *part
 )
@@ -469,6 +505,16 @@ static inline int bed_block_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->block_shift;
+}
+
+static inline bed_address bed_block_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->block_shift) - one;
 }
 
 static inline bed_address bed_block_to_address(
@@ -487,6 +533,22 @@ static inline bed_address bed_address_to_block(
 	return addr >> bed_block_shift(part);
 }
 
+static inline bed_address bed_address_align_up_to_block(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_block_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_block(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_block_mask(part));
+}
+
 static inline int bed_chip_shift(
 	const bed_partition *part
 )
@@ -494,6 +556,16 @@ static inline int bed_chip_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->chip_shift;
+}
+
+static inline bed_address bed_chip_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->chip_shift) - one;
 }
 
 static inline bed_address bed_chip_to_address(
@@ -510,6 +582,22 @@ static inline bed_address bed_address_to_chip(
 )
 {
 	return addr >> bed_chip_shift(part);
+}
+
+static inline bed_address bed_address_align_up_to_chip(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_chip_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_chip(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_chip_mask(part));
 }
 
 /** @} */
