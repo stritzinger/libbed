@@ -195,6 +195,8 @@ static void copy_oob(
 				}
 			}
 
+			memset(data, 0, size);
+
 			break;
 		}
 		default:
