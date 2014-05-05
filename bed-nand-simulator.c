@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -62,6 +62,7 @@ typedef struct {
 	uint8_t *area;
 } nand_sim_context;
 
+#ifndef NDEBUG
 static bool is_cmd(int ctrl)
 {
 	return (ctrl & (BED_NAND_CTRL_ALE | BED_NAND_CTRL_CLE))
@@ -73,6 +74,7 @@ static bool is_addr(int ctrl)
 	return (ctrl & (BED_NAND_CTRL_ALE | BED_NAND_CTRL_CLE))
 		== (BED_NAND_CTRL_ALE);
 }
+#endif
 
 static void expect_none_state(nand_sim_context *sim, nand_sim_state next)
 {
@@ -184,7 +186,7 @@ static void nand_sim_control(bed_device *bed, int data, int ctrl)
 			start_sequence(bed, data, ctrl);
 			break;
 		case EXPECT_NONE:
-			assert(data == BED_NAND_CMD_NONE);
+			assert((unsigned) data == BED_NAND_CMD_NONE);
 			sim->state = sim->next_state;
 			break;
 		case ADDR_BYTE:
@@ -226,7 +228,7 @@ static void nand_sim_control(bed_device *bed, int data, int ctrl)
 			expect_none_state(sim, sim->next_state);
 			break;
 		case READ_ID_CHECK_ADDR:
-			assert(data == BED_NAND_CMD_NONE);
+			assert((unsigned) data == BED_NAND_CMD_NONE);
 			switch (sim->column) {
 				case 0x00:
 					sim->io_mode = SIM_IO_ID;
@@ -312,6 +314,7 @@ static void nand_sim_read_buffer(bed_device *bed, uint8_t *data, size_t n)
 			break;
 	}
 
+	(void) size_max;
 	assert(sim->column < size_max);
 	assert(n <= size_max - sim->column);
 
@@ -338,7 +341,7 @@ static uint16_t nand_sim_read_16(bed_device *bed)
 	return value;
 }
 
-static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -355,7 +358,7 @@ static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bed_oob_mod
 	memcpy(data, nand_data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	memcpy(oob, nand_oob, OOB_CHUNK_SIZE * sim->ecc_chunks);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		for (i = 0; status == BED_SUCCESS && i < sim->ecc_chunks; ++i) {
 			uint8_t calc_ecc [BED_ECC_HAMMING_256_SIZE];
 
@@ -389,6 +392,7 @@ static void nand_sim_write_buffer(bed_device *bed, const uint8_t *data, size_t n
 
 	assert(sim->io_mode == SIM_IO_DATA);
 
+	(void) size_max;
 	assert(sim->column < size_max);
 	assert(n <= size_max - sim->column);
 
@@ -398,7 +402,7 @@ static void nand_sim_write_buffer(bed_device *bed, const uint8_t *data, size_t n
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -415,7 +419,7 @@ static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bed_
 	nand_sim_memcpy(nand_data, data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	nand_sim_memcpy(nand_oob, oob, OOB_CHUNK_SIZE * sim->ecc_chunks);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		for (i = 0; status == BED_SUCCESS && i < sim->ecc_chunks; ++i) {
 			bed_ecc_hamming_256_calculate(nand_data, nand_ecc);
 

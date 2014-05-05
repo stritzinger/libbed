@@ -7,10 +7,10 @@
  */
 
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -89,18 +89,29 @@ typedef enum {
  */
 typedef enum {
 	/**
-	 * @brief Automatically place OOB data.
+	 * @brief Automatically place out-of-bounds (OOB) data.
 	 *
-	 * This generates also the ECC for the OOB data.
+	 * For read operations an ECC check and correction will be performed.
+	 * For write operations this generates the ECC data and places it into
+	 * OOB area automatically.
 	 */
 	BED_OOB_MODE_AUTO,
 
 	/**
-	 * @brief Place out-of-bounds data according to offset and size.
+	 * @brief Place out-of-bounds (OOB) data according to offset and size.
 	 *
-	 * This may not generate the ECC for the OOB data.
+	 * For read operations an ECC check and correction will be performed.
+	 * For write operations the ECC data is not generated.
 	 */
-	BED_OOB_MODE_RAW
+	BED_OOB_MODE_RAW,
+
+	/**
+	 * @brief Place out-of-bounds (OOB) data according to offset and size.
+	 *
+	 * For read operations no ECC check and correction will be performed.
+	 * For write operations the ECC data is not generated.
+	 */
+	BED_OOB_MODE_BLOODY
 } bed_oob_mode;
 
 /**
@@ -240,9 +251,71 @@ typedef bool (*bed_read_process)(
   size_t m
 );
 
+/**
+ * @brief Reads the valid pages of a partition and skips bad blocks.
+ *
+ * The pages are read with ECC correction turned on (BED_OOB_MODE_AUTO).
+ *
+ * @param[in] part The partition.
+ * @param[in] process The page process function.
+ * @param[in] process_arg The argument for the page process function.
+ * @param[in] page_buffer Buffer to store the page content.  It must be large
+ * enough for the pages of this partition.
+ * @param[in] oob_buffer Buffer to store the OOB content.  It must be large
+ * enough for the OOB areas of this partition.
+ *
+ * @retval BED_SUCCESS Successful operation.
+ * @retval BED_ERROR_STOPPED The process function requested a stop.
+ * @retval BED_ERROR_ECC_UNCORRECTABLE Uncorrectable ECC error during a page
+ * read.
+ * @retval other Other error status codes depending on the driver.
+ */
 bed_status bed_read_with_skip(
 	const bed_partition *part,
 	bed_read_process process,
+	void *process_arg,
+	void *page_buffer,
+	void *oob_buffer
+);
+
+/**
+ * @brief Read all process function.
+ *
+ * @see bed_read_all().
+ *
+ * @retval false Continue processing.
+ * @retval true Stop processing.
+ */
+typedef bool (*bed_read_all_process)(
+  void *process_arg,
+  bed_address addr,
+  bed_status is_block_valid_status,
+  bed_status page_read_status,
+  void *data,
+  size_t n,
+  void *oob,
+  size_t m
+);
+
+/**
+ * @brief Reads all pages of a partition.
+ *
+ * @param[in] part The partition.
+ * @param[in] oob_mode The OOB mode used to read the pages.
+ * @param[in] process The page process function.
+ * @param[in] process_arg The argument for the page process function.
+ * @param[in] page_buffer Buffer to store the page content.  It must be large
+ * enough for the pages of this partition.
+ * @param[in] oob_buffer Buffer to store the OOB content.  It must be large
+ * enough for the OOB areas of this partition.
+ *
+ * @retval BED_SUCCESS Successful operation.
+ * @retval BED_ERROR_STOPPED The process function requested a stop.
+ */
+bed_status bed_read_all(
+	const bed_partition *part,
+	bed_oob_mode oob_mode,
+	bed_read_all_process process,
 	void *process_arg,
 	void *page_buffer,
 	void *oob_buffer
@@ -375,6 +448,16 @@ static inline uint32_t bed_end(const bed_partition *part)
 	return part->begin + part->size;
 }
 
+static inline bed_address bed_align_up(bed_address addr, bed_address mask)
+{
+	return (addr + mask) & ~mask;
+}
+
+static inline bed_address bed_align_down(bed_address addr, bed_address mask)
+{
+	return addr & ~mask;
+}
+
 static inline int bed_page_shift(
 	const bed_partition *part
 )
@@ -382,6 +465,16 @@ static inline int bed_page_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->page_shift;
+}
+
+static inline bed_address bed_page_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->page_shift) - one;
 }
 
 static inline bed_address bed_page_to_address(
@@ -400,6 +493,22 @@ static inline bed_address bed_address_to_page(
 	return addr >> bed_page_shift(part);
 }
 
+static inline bed_address bed_address_align_up_to_page(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_page_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_page(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_page_mask(part));
+}
+
 static inline int bed_block_shift(
 	const bed_partition *part
 )
@@ -407,6 +516,16 @@ static inline int bed_block_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->block_shift;
+}
+
+static inline bed_address bed_block_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->block_shift) - one;
 }
 
 static inline bed_address bed_block_to_address(
@@ -425,6 +544,22 @@ static inline bed_address bed_address_to_block(
 	return addr >> bed_block_shift(part);
 }
 
+static inline bed_address bed_address_align_up_to_block(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_block_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_block(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_block_mask(part));
+}
+
 static inline int bed_chip_shift(
 	const bed_partition *part
 )
@@ -432,6 +567,16 @@ static inline int bed_chip_shift(
 	const bed_device *bed = part->bed;
 
 	return bed->chip_shift;
+}
+
+static inline bed_address bed_chip_mask(
+	const bed_partition *part
+)
+{
+	const bed_device *bed = part->bed;
+	bed_address one = 1;
+
+	return (one << bed->chip_shift) - one;
 }
 
 static inline bed_address bed_chip_to_address(
@@ -448,6 +593,22 @@ static inline bed_address bed_address_to_chip(
 )
 {
 	return addr >> bed_chip_shift(part);
+}
+
+static inline bed_address bed_address_align_up_to_chip(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_up(address, bed_chip_mask(part));
+}
+
+static inline bed_address bed_address_align_down_to_chip(
+	const bed_partition *part,
+	bed_address address
+)
+{
+	return bed_align_down(address, bed_chip_mask(part));
 }
 
 /** @} */

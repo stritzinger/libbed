@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -191,7 +191,7 @@ static bed_status mlc_check_ecc_status(
 	return status;
 }
 
-static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -200,22 +200,30 @@ static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 	uint8_t *oob = nand->oob_buffer;
 	int i;
 
-	for (i = 0; i < self->chunk_count; ++i) {
-		mlc->ecc_auto_dec = 0;
+	if (use_ecc) {
+		for (i = 0; i < self->chunk_count; ++i) {
+			mlc->ecc_auto_dec = 0;
 
-		mlc_wait(mlc, MLC_ISR_CONTROLLER_READY | MLC_ISR_NAND_READY);
+			mlc_wait(mlc, MLC_ISR_CONTROLLER_READY | MLC_ISR_NAND_READY);
 
-		status = mlc_check_ecc_status(status, nand, mlc->isr);
+			status = mlc_check_ecc_status(status, nand, mlc->isr);
 
-		mlc_read(&mlc->buff, data, MLC_CHUNK_DATA_SIZE);
-		mlc_read(&mlc->buff, oob, MLC_CHUNK_OOB_SIZE);
+			mlc_read(&mlc->buff, data, MLC_CHUNK_DATA_SIZE);
+			mlc_read(&mlc->buff, oob, MLC_CHUNK_OOB_SIZE);
 
-		data += MLC_CHUNK_DATA_SIZE;
-		oob += MLC_CHUNK_OOB_SIZE;
-	}
+			data += MLC_CHUNK_DATA_SIZE;
+			oob += MLC_CHUNK_OOB_SIZE;
+		}
+	} else {
+		for (i = 0; i < self->chunk_count; ++i) {
+			mlc_wait(mlc, MLC_ISR_NAND_READY);
 
-	if (mode != BED_OOB_MODE_AUTO) {
-		status = BED_SUCCESS;
+			mlc_read(&mlc->data, data, MLC_CHUNK_DATA_SIZE);
+			mlc_read(&mlc->data, oob, MLC_CHUNK_OOB_SIZE);
+
+			data += MLC_CHUNK_DATA_SIZE;
+			oob += MLC_CHUNK_OOB_SIZE;
+		}
 	}
 
 	return status;
@@ -248,11 +256,11 @@ static void mlc_write_buffer(bed_device *bed, const uint8_t *data, size_t n)
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status mlc_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status mlc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		bed_nand_context *nand = bed->context;
 		const bed_lpc32xx_mlc_context *self = nand->context;
 		volatile bed_lpc32xx_mlc *mlc = self->mlc;

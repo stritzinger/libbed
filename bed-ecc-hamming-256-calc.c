@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -40,7 +40,6 @@ void bed_ecc_hamming_256_calculate(const void *data, uint8_t *ecc)
 	const uint8_t *byte = data;
 	uint8_t par = 0;
 	uint8_t rp [16];
-	uint8_t cur;
 	int i;
 
 	memset(rp, 0, sizeof(rp));

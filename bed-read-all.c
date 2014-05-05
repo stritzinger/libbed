@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -16,11 +16,12 @@
 
 #include <string.h>
 
-static bed_status read_with_skip(
+static bed_status read_all(
 	bed_device *bed,
 	bed_address area_begin,
 	bed_address area_size,
-	bed_read_process process,
+	bed_oob_mode oob_mode,
+	bed_read_all_process process,
 	void *process_arg,
 	void *page_buffer,
 	void *oob_buffer
@@ -30,9 +31,9 @@ static bed_status read_with_skip(
 	bed_address area_end = area_begin + area_size;
 	uint32_t block_size = bed->block_size;
 	uint16_t page_size = bed->page_size;
-	uint16_t oob_size = bed->oob_free_size;
+	uint16_t oob_size = (uint16_t) (oob_mode == BED_OOB_MODE_AUTO ? bed->oob_free_size : bed->oob_size);
 	bed_oob_request oob = {
-		.mode = BED_OOB_MODE_AUTO,
+		.mode = oob_mode,
 		.offset = 0,
 		.size = oob_size,
 		.data = oob_buffer
@@ -41,32 +42,25 @@ static bed_status read_with_skip(
 
 	while (status == BED_SUCCESS && block != area_end) {
 		bed_address next_block = block + block_size;
+		bed_status is_block_valid_status;
+		bed_address page;
 
-		status = (*bed->is_block_valid)(bed, block);
-		if (status == BED_ERROR_OP_NOT_SUPPORTED) {
-			status = BED_SUCCESS;
-		}
-		if (status == BED_SUCCESS) {
-			bed_address page;
+		is_block_valid_status = (*bed->is_block_valid)(bed, block);
 
-			for (page = block; status == BED_SUCCESS && page != next_block; page += page_size) {
-				status = (*bed->read_oob)(bed, page, page_buffer, page_size, &oob);
-				if (status == BED_SUCCESS || status == BED_ERROR_ECC_FIXED) {
-					bool done = (*process)(
-						process_arg,
-						page,
-						page_buffer,
-						page_size,
-						oob_buffer,
-						oob_size
-					);
+		for (page = block; status == BED_SUCCESS && page != next_block; page += page_size) {
+			bed_status page_read_status = (*bed->read_oob)(bed, page, page_buffer, page_size, &oob);
+			bool done = (*process)(
+				process_arg,
+				page,
+				is_block_valid_status,
+				page_read_status,
+				page_buffer,
+				page_size,
+				oob_buffer,
+				oob_size
+			);
 
-					status = done ? BED_ERROR_STOPPED : BED_SUCCESS;
-				}
-			}
-
-		} else {
-			status = BED_SUCCESS;
+			status = done ? BED_ERROR_STOPPED : BED_SUCCESS;
 		}
 
 		block = next_block;
@@ -75,9 +69,10 @@ static bed_status read_with_skip(
 	return status;
 }
 
-bed_status bed_read_with_skip(
+bed_status bed_read_all(
 	const bed_partition *part,
-	bed_read_process process,
+	bed_oob_mode oob_mode,
+	bed_read_all_process process,
 	void *process_arg,
 	void *page_buffer,
 	void *oob_buffer
@@ -87,10 +82,11 @@ bed_status bed_read_with_skip(
 	bed_device *bed = part->bed;
 
 	(*bed->obtain)(bed);
-	status = read_with_skip(
+	status = read_all(
 		bed,
 		part->begin,
 		part->size,
+		oob_mode,
 		process,
 		process_arg,
 		page_buffer,

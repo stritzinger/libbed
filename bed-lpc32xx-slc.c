@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -85,13 +85,6 @@
 #define SLC_ECC_CP(val) BED_FLD32(val, 0, 5)
 
 /** @} */
-
-static void slc_wait(volatile bed_lpc32xx_slc *slc, uint32_t flags)
-{
-	while ((slc->stat & flags) != flags) {
-		/* Wait */
-	}
-}
 
 static void slc_control(bed_device *bed, int data, int ctrl)
 {
@@ -179,6 +172,7 @@ static void slc_cache_invalidate(const void *addr, size_t n)
 	}
 }
 
+#ifndef BED_CONFIG_READ_ONLY
 static void slc_cache_clean(const void *addr, size_t n)
 {
 	const uint8_t *p = ARM_CP15_CACHE_PREPARE_MVA(addr);
@@ -191,6 +185,7 @@ static void slc_cache_clean(const void *addr, size_t n)
 		p += 32;
 	}
 }
+#endif /* BED_CONFIG_READ_ONLY */
 
 static void slc_dma_wait(volatile lpc_dma *dma, uint32_t channel_bit)
 {
@@ -208,7 +203,6 @@ static void slc_dma_transfer(bed_lpc32xx_slc_context *self, uintptr_t data, bool
 	size_t chunk_count = self->chunk_count;
 	uint32_t slc_cfg = slc->cfg;
 	uint32_t chunk = data;
-	uint32_t dma_cfg;
 	size_t i;
 
 	slc_cfg |= SLC_CFG_ECC_EN | SLC_CFG_DMA_ECC | SLC_CFG_DMA_BURST;
@@ -233,7 +227,6 @@ static void slc_dma_transfer(bed_lpc32xx_slc_context *self, uintptr_t data, bool
 		bool cache_aligned = slc_is_cache_aligned(data);
 
 		for (i = 0; i < chunk_count; ++i) {
-			size_t j = 2 * i;
 			uint32_t dest;
 
 			if (cache_aligned) {
@@ -349,7 +342,7 @@ static void slc_ecc_copy(uint8_t *ecc, const uint32_t *slc_ecc, size_t count)
 	}
 }
 
-static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status slc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -359,7 +352,7 @@ static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 	slc_dma_transfer(self, (uintptr_t) data, true);
 	slc_read_buffer(bed, oob, bed->oob_size);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		uint8_t calc_ecc_buf [BED_LPC32XX_SLC_CHUNK_COUNT_MAX * BED_ECC_HAMMING_256_SIZE];
 		const uint8_t *read_ecc = nand->oob_buffer + nand->oob_ecc_ranges->offset;
 		uint8_t *calc_ecc = calc_ecc_buf;
@@ -385,18 +378,17 @@ static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
 	bed_lpc32xx_slc_context *self = nand->context;
-	volatile bed_lpc32xx_slc *slc = self->slc;
 	const uint8_t *oob = nand->oob_buffer;
 	uint8_t *oob_ecc = nand->oob_buffer + nand->oob_ecc_ranges->offset;
 
 	slc_dma_transfer(self, (uintptr_t) data, false);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		slc_ecc_copy(oob_ecc, self->ecc_buffer, self->chunk_count);
 	}
 
@@ -419,7 +411,6 @@ static void slc_init(volatile bed_lpc32xx_slc *slc, uint32_t tac)
 
 static void slc_dma_init(bed_lpc32xx_slc_context *self)
 {
-	volatile bed_lpc32xx_slc *slc = self->slc;
 	volatile lpc_dma *dma = self->dma;
 
 	LPC32XX_DMACLK_CTRL = 0x1;
@@ -430,7 +421,6 @@ static void slc_chip_detected(bed_device *bed)
 {
 	bed_nand_context *nand = bed->context;
 	bed_lpc32xx_slc_context *self = nand->context;
-	volatile bed_lpc32xx_slc *slc = self->slc;
 
 	self->chunk_count = bed->page_size / BED_LPC32XX_SLC_CHUNK_DATA_SIZE;
 

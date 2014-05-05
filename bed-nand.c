@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -175,6 +175,7 @@ static void copy_oob(
 	size_t size = oob->size;
 
 	switch (oob->mode) {
+		case BED_OOB_MODE_BLOODY:
 		case BED_OOB_MODE_RAW:
 			memcpy(data, oob_buffer + offset, size);
 			break;
@@ -194,6 +195,8 @@ static void copy_oob(
 					offset -= range->size;
 				}
 			}
+
+			memset(data, 0, size);
 
 			break;
 		}
@@ -220,7 +223,7 @@ bed_status bed_nand_read_oob_only_with_trash(bed_device *bed, uint32_t page)
 	bed_nand_context *nand = bed->context;
 
 	(*nand->command)(bed, BED_NAND_CMD_READ_PAGE, page, 0);
-	status = (*nand->read_page)(bed, bed_trash_buffer(bed->page_size), BED_OOB_MODE_RAW);
+	status = (*nand->read_page)(bed, bed_trash_buffer(bed->page_size), true);
 
 	return status;
 }
@@ -254,7 +257,7 @@ bed_status bed_nand_read_oob(
 
 		if (n != 0) {
 			(*nand->command)(bed, BED_NAND_CMD_READ_PAGE, page, 0);
-			status = (*nand->read_page)(bed, data, oob->mode);
+			status = (*nand->read_page)(bed, data, oob->mode != BED_OOB_MODE_BLOODY);
 		} else {
 			status = (*nand->read_oob_only)(bed, page);
 		}
@@ -300,6 +303,7 @@ static void fill_oob(
 	memset(oob_buffer, 0xff, bed->oob_size);
 
 	switch (oob->mode) {
+		case BED_OOB_MODE_BLOODY:
 		case BED_OOB_MODE_RAW:
 			memcpy(oob_buffer + offset, data, size);
 			break;
@@ -356,7 +360,7 @@ bed_status bed_nand_write_oob(
 		fill_oob(bed, nand, oob);
 		bed_select_chip(bed, chip);
 		(*nand->command)(bed, BED_NAND_CMD_PROGRAM_PAGE, page, 0);
-		status = (*nand->write_page)(bed, data, oob->mode);
+		status = (*nand->write_page)(bed, data, oob->mode == BED_OOB_MODE_AUTO);
 		if (status == BED_SUCCESS) {
 			(*nand->command)(bed, BED_NAND_CMD_PROGRAM_PAGE_2, 0, 0);
 			status = bed_nand_check_status(bed, BED_ERROR_WRITE);
@@ -396,7 +400,7 @@ static bed_status write_bad_block_mark(bed_device *bed, bed_address addr)
 	uint32_t page = ((uint32_t) (addr >> bed->page_shift)) & bed->page_mask;
 	uint8_t marker [2] = { 0, 0 };
 	bed_oob_request oob = {
-		.mode = BED_OOB_MODE_RAW,
+		.mode = BED_OOB_MODE_BLOODY,
 		.offset = nand->bbc.marker_position,
 		.size = 1,
 		.data = marker
@@ -545,19 +549,19 @@ static bed_status detect_onfi_chip(bed_device *bed)
 static bed_status micron_internal_ecc_read_page(
 	bed_device *bed,
 	uint8_t *data,
-	bed_oob_mode mode
+	bool use_ecc
 )
 {
 	bed_status status;
 	bed_nand_context *nand = bed->context;
 
-	status = (*nand->boxed_read_page)(bed, data, BED_OOB_MODE_RAW);
+	status = (*nand->boxed_read_page)(bed, data, false);
 	if (status == BED_SUCCESS) {
 		uint8_t nand_status = read_status(bed);
 
 		(*nand->command)(bed, BED_NAND_CMD_READ_MODE, 0, 0);
 
-		if (mode == BED_OOB_MODE_AUTO) {
+		if (use_ecc) {
 			if ((nand_status & (BED_NAND_STATUS_READY | BED_NAND_STATUS_FAIL)) != BED_NAND_STATUS_READY) {
 				status = BED_ERROR_ECC_UNCORRECTABLE;
 			} else if ((nand_status & BED_NAND_STATUS_MICRON_REWRITE_RECOMMENDED) != 0) {
@@ -573,15 +577,15 @@ static bed_status micron_internal_ecc_read_page(
 static bed_status micron_internal_ecc_write_page(
 	bed_device *bed,
 	const uint8_t *data,
-	bed_oob_mode mode
+	bool use_ecc
 )
 {
 	bed_status status;
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		bed_nand_context *nand = bed->context;
 
-		status = (*nand->boxed_write_page)(bed, data, BED_OOB_MODE_RAW);
+		status = (*nand->boxed_write_page)(bed, data, false);
 	} else {
 		status = BED_ERROR_OOB_MODE;
 	}

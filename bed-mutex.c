@@ -2,7 +2,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -39,12 +39,14 @@ void bed_mutex_obtain(bed_device *bed)
 		RTEMS_WAIT,
 		RTEMS_NO_TIMEOUT
 	);
+	(void) sc;
 	assert(sc == RTEMS_SUCCESSFUL);
 }
 
 void bed_mutex_release(bed_device *bed)
 {
 	rtems_status_code sc = rtems_semaphore_release(bed->mutex_id);
+	(void) sc;
 	assert(sc == RTEMS_SUCCESSFUL);
 }
 

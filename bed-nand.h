@@ -10,7 +10,7 @@
  * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
- *  Obere Lagerstr. 30
+ *  Dornierstr. 4
  *  82178 Puchheim
  *  Germany
  *  <rtems@embedded-brains.de>
@@ -61,7 +61,7 @@ extern "C" {
 
 #define BED_NAND_CMD_ADDR_ROW 0x1000
 
-#define BED_NAND_CMD_VIRTUAL 0x0800
+#define BED_NAND_CMD_VIRTUAL 0x80000000
 
 typedef enum {
 	BED_NAND_CMD_NONE = BED_NAND_CMD_VIRTUAL,
@@ -99,7 +99,7 @@ typedef enum {
 
 static inline bool bed_nand_is_real_data(int data)
 {
-	return (data & BED_NAND_CMD_VIRTUAL) == 0;
+	return ((unsigned) data & BED_NAND_CMD_VIRTUAL) == 0;
 }
 
 #define BED_NAND_MFR_SPANSION 0x01
@@ -130,11 +130,11 @@ typedef void (*bed_nand_read_buffer_method)(bed_device *bed, uint8_t *data, size
 
 typedef bed_status (*bed_nand_read_oob_only_method)(bed_device *bed, uint32_t page);
 
-typedef bed_status (*bed_nand_read_page_method)(bed_device *bed, uint8_t *data, bed_oob_mode mode);
+typedef bed_status (*bed_nand_read_page_method)(bed_device *bed, uint8_t *data, bool use_ecc);
 
 typedef void (*bed_nand_write_buffer_method)(bed_device *bed, const uint8_t *data, size_t n);
 
-typedef bed_status (*bed_nand_write_page_method)(bed_device *bed, const uint8_t *data, bed_oob_mode mode);
+typedef bed_status (*bed_nand_write_page_method)(bed_device *bed, const uint8_t *data, bool use_ecc);
 
 typedef bed_status (*bed_nand_mark_page_bad_method)(bed_device *bed, uint32_t page);
 
