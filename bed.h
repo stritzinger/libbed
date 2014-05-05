@@ -89,18 +89,29 @@ typedef enum {
  */
 typedef enum {
 	/**
-	 * @brief Automatically place OOB data.
+	 * @brief Automatically place out-of-bounds (OOB) data.
 	 *
-	 * This generates also the ECC for the OOB data.
+	 * For read operations an ECC check and correction will be performed.
+	 * For write operations this generates the ECC data and places it into
+	 * OOB area automatically.
 	 */
 	BED_OOB_MODE_AUTO,
 
 	/**
-	 * @brief Place out-of-bounds data according to offset and size.
+	 * @brief Place out-of-bounds (OOB) data according to offset and size.
 	 *
-	 * This may not generate the ECC for the OOB data.
+	 * For read operations an ECC check and correction will be performed.
+	 * For write operations the ECC data is not generated.
 	 */
-	BED_OOB_MODE_RAW
+	BED_OOB_MODE_RAW,
+
+	/**
+	 * @brief Place out-of-bounds (OOB) data according to offset and size.
+	 *
+	 * For read operations no ECC check and correction will be performed.
+	 * For write operations the ECC data is not generated.
+	 */
+	BED_OOB_MODE_BLOODY
 } bed_oob_mode;
 
 /**

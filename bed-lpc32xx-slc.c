@@ -342,7 +342,7 @@ static void slc_ecc_copy(uint8_t *ecc, const uint32_t *slc_ecc, size_t count)
 	}
 }
 
-static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status slc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -352,7 +352,7 @@ static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 	slc_dma_transfer(self, (uintptr_t) data, true);
 	slc_read_buffer(bed, oob, bed->oob_size);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		uint8_t calc_ecc_buf [BED_LPC32XX_SLC_CHUNK_COUNT_MAX * BED_ECC_HAMMING_256_SIZE];
 		const uint8_t *read_ecc = nand->oob_buffer + nand->oob_ecc_ranges->offset;
 		uint8_t *calc_ecc = calc_ecc_buf;
@@ -378,7 +378,7 @@ static bed_status slc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -388,7 +388,7 @@ static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bed_oob_m
 
 	slc_dma_transfer(self, (uintptr_t) data, false);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		slc_ecc_copy(oob_ecc, self->ecc_buffer, self->chunk_count);
 	}
 

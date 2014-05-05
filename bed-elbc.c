@@ -94,15 +94,15 @@ static void elbc_write_buffer(bed_device *bed, const uint8_t *data, size_t n)
 	bed_elbc_write_workaround(&buf[n - 1]);
 }
 
-static void elbc_set_ecc_mode(const bed_elbc_context *self, bed_oob_mode mode)
+static void elbc_set_ecc_mode(const bed_elbc_context *self, bool use_ecc)
 {
-	bed_elbc_ecc_mode ecc_mode = mode == BED_OOB_MODE_AUTO ?
+	bed_elbc_ecc_mode ecc_mode = use_ecc ?
 		self->ecc_mode_auto : ELBC_ECC_MODE_NONE;
 
 	bed_elbc_set_ecc_mode(self->elbc, self->bank, ecc_mode);
 }
 
-static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_elbc_context *self = elbc_get_context(bed);
@@ -112,14 +112,14 @@ static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mo
 
 	assert(self->current_buffer_offset == 0);
 
-	elbc_set_ecc_mode(self, mode);
+	elbc_set_ecc_mode(self, use_ecc);
 	elbc_execute(self);
 
 	memcpy(data, buf, bed->page_size);
 	buf += bed->page_size;
 	memcpy(oob, buf, bed->oob_size);
 
-	if (mode == BED_OOB_MODE_AUTO && (self->ltesr & ELBC_LTE_PAR) != 0) {
+	if (use_ecc && (self->ltesr & ELBC_LTE_PAR) != 0) {
 		status = BED_ERROR_ECC_UNCORRECTABLE;
 	} else if ((self->ltesr & ELBC_LTE_FCT) != 0) {
 		status = BED_ERROR_NO_DEVICE;
@@ -129,7 +129,7 @@ static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mo
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status elbc_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status elbc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_elbc_context *self = elbc_get_context(bed);
@@ -139,7 +139,7 @@ static bed_status elbc_write_page(bed_device *bed, const uint8_t *data, bed_oob_
 
 	assert(self->current_buffer_offset == 0);
 
-	elbc_set_ecc_mode(self, mode);
+	elbc_set_ecc_mode(self, use_ecc);
 
 	memcpy(buf, data, bed->page_size);
 	buf += bed->page_size;

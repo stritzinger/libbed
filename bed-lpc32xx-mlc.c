@@ -191,7 +191,7 @@ static bed_status mlc_check_ecc_status(
 	return status;
 }
 
-static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -200,7 +200,7 @@ static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 	uint8_t *oob = nand->oob_buffer;
 	int i;
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		for (i = 0; i < self->chunk_count; ++i) {
 			mlc->ecc_auto_dec = 0;
 
@@ -214,7 +214,7 @@ static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 			data += MLC_CHUNK_DATA_SIZE;
 			oob += MLC_CHUNK_OOB_SIZE;
 		}
-	} else if (mode == BED_OOB_MODE_RAW) {
+	} else {
 		for (i = 0; i < self->chunk_count; ++i) {
 			mlc_wait(mlc, MLC_ISR_NAND_READY);
 
@@ -224,8 +224,6 @@ static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mod
 			data += MLC_CHUNK_DATA_SIZE;
 			oob += MLC_CHUNK_OOB_SIZE;
 		}
-	} else {
-		status = BED_ERROR_OOB_MODE;
 	}
 
 	return status;
@@ -258,11 +256,11 @@ static void mlc_write_buffer(bed_device *bed, const uint8_t *data, size_t n)
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status mlc_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status mlc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		bed_nand_context *nand = bed->context;
 		const bed_lpc32xx_mlc_context *self = nand->context;
 		volatile bed_lpc32xx_mlc *mlc = self->mlc;

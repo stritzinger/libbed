@@ -130,11 +130,11 @@ typedef void (*bed_nand_read_buffer_method)(bed_device *bed, uint8_t *data, size
 
 typedef bed_status (*bed_nand_read_oob_only_method)(bed_device *bed, uint32_t page);
 
-typedef bed_status (*bed_nand_read_page_method)(bed_device *bed, uint8_t *data, bed_oob_mode mode);
+typedef bed_status (*bed_nand_read_page_method)(bed_device *bed, uint8_t *data, bool use_ecc);
 
 typedef void (*bed_nand_write_buffer_method)(bed_device *bed, const uint8_t *data, size_t n);
 
-typedef bed_status (*bed_nand_write_page_method)(bed_device *bed, const uint8_t *data, bed_oob_mode mode);
+typedef bed_status (*bed_nand_write_page_method)(bed_device *bed, const uint8_t *data, bool use_ecc);
 
 typedef bed_status (*bed_nand_mark_page_bad_method)(bed_device *bed, uint32_t page);
 

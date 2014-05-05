@@ -341,7 +341,7 @@ static uint16_t nand_sim_read_16(bed_device *bed)
 	return value;
 }
 
-static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bed_oob_mode mode)
+static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -358,7 +358,7 @@ static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bed_oob_mod
 	memcpy(data, nand_data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	memcpy(oob, nand_oob, OOB_CHUNK_SIZE * sim->ecc_chunks);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		for (i = 0; status == BED_SUCCESS && i < sim->ecc_chunks; ++i) {
 			uint8_t calc_ecc [BED_ECC_HAMMING_256_SIZE];
 
@@ -402,7 +402,7 @@ static void nand_sim_write_buffer(bed_device *bed, const uint8_t *data, size_t n
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bed_oob_mode mode)
+static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -419,7 +419,7 @@ static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bed_
 	nand_sim_memcpy(nand_data, data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	nand_sim_memcpy(nand_oob, oob, OOB_CHUNK_SIZE * sim->ecc_chunks);
 
-	if (mode == BED_OOB_MODE_AUTO) {
+	if (use_ecc) {
 		for (i = 0; status == BED_SUCCESS && i < sim->ecc_chunks; ++i) {
 			bed_ecc_hamming_256_calculate(nand_data, nand_ecc);
 
