@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -31,7 +31,7 @@ bed_status bed_read_oob(
 	bed_device *bed = part->bed;
 
 	if (bed_is_range_valid(part, addr, n) && bed_is_oob_request_valid(bed, oob)) {
-		if (n > 0) {
+		if (n > 0 || oob->size > 0) {
 			(*bed->obtain)(bed);
 			status = (*bed->read_oob)(bed, part->begin + addr, data, n, oob);
 			(*bed->release)(bed);
