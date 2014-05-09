@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -13,8 +13,6 @@
  */
 
 #include "bed-lpc32xx.h"
-
-#include <assert.h>
 
 #include <libcpu/arm-cp15.h>
 
@@ -85,6 +83,11 @@
 #define SLC_ECC_CP(val) BED_FLD32(val, 0, 5)
 
 /** @} */
+
+typedef enum {
+	SLC_ECC_LAYOUT_BED,
+	SLC_ECC_LAYOUT_MTD
+} slc_ecc_layout;
 
 static void slc_control(bed_device *bed, int data, int ctrl)
 {
@@ -322,24 +325,54 @@ static void slc_dma_transfer(bed_lpc32xx_slc_context *self, uintptr_t data, bool
 	slc->cfg = slc_cfg;
 }
 
-static void slc_ecc_copy(uint8_t *ecc, const uint32_t *slc_ecc, size_t count)
+static void slc_ecc_copy(uint8_t *ecc, const uint32_t *slc_ecc, size_t count, slc_ecc_layout ecc_layout)
 {
 	size_t i;
 
-	for (i = 0; i < count; ++i) {
-		uint32_t e = slc_ecc [i];
+	if (ecc_layout == SLC_ECC_LAYOUT_MTD) {
+		for (i = 0; i < count; ++i) {
+			uint32_t e = slc_ecc [i];
 
-		e = ~(e << 2) & 0xffffff;
+			e = ~(e << 2) & 0xffffff;
 
-		*ecc = (uint8_t) e;
-		++ecc;
+			*ecc = (uint8_t) (e >> 16);
+			++ecc;
 
-		*ecc = (uint8_t) (e >> 8);
-		++ecc;
+			*ecc = (uint8_t) (e >> 8);
+			++ecc;
 
-		*ecc = (uint8_t) (e >> 16);
-		++ecc;
+			*ecc = (uint8_t) e;
+			++ecc;
+		}
+	} else {
+		for (i = 0; i < count; ++i) {
+			uint32_t e = slc_ecc [i];
+
+			e = ~(e << 2) & 0xffffff;
+
+			*ecc = (uint8_t) e;
+			++ecc;
+
+			*ecc = (uint8_t) (e >> 8);
+			++ecc;
+
+			*ecc = (uint8_t) (e >> 16);
+			++ecc;
+		}
 	}
+}
+
+static slc_ecc_layout slc_get_ecc_layout(bed_lpc32xx_slc_context *self, uint32_t page)
+{
+	slc_ecc_layout ecc_layout;
+
+	if (page - self->mtd_ecc_area_in_pages.begin < self->mtd_ecc_area_in_pages.size) {
+		ecc_layout = SLC_ECC_LAYOUT_MTD;
+	} else {
+		ecc_layout = SLC_ECC_LAYOUT_BED;
+	}
+
+	return ecc_layout;
 }
 
 static bed_status slc_read_page(bed_device *bed, uint32_t page, uint8_t *data, bool use_ecc)
@@ -353,13 +386,14 @@ static bed_status slc_read_page(bed_device *bed, uint32_t page, uint8_t *data, b
 	slc_read_buffer(bed, oob, bed->oob_size);
 
 	if (use_ecc) {
+		slc_ecc_layout ecc_layout = slc_get_ecc_layout(self, page);
 		uint8_t calc_ecc_buf [BED_LPC32XX_SLC_CHUNK_COUNT_MAX * BED_ECC_HAMMING_256_SIZE];
 		const uint8_t *read_ecc = nand->oob_buffer + nand->oob_ecc_ranges->offset;
 		uint8_t *calc_ecc = calc_ecc_buf;
 		uint8_t *chunk = data;
 		size_t i;
 
-		slc_ecc_copy(calc_ecc, self->ecc_buffer, self->chunk_count);
+		slc_ecc_copy(calc_ecc, self->ecc_buffer, self->chunk_count, ecc_layout);
 
 		for (i = 0; i < self->chunk_count; ++i) {
 			bed_status ecc_status = bed_ecc_hamming_256_correct(chunk, read_ecc, calc_ecc);
@@ -389,7 +423,9 @@ static bed_status slc_write_page(bed_device *bed, uint32_t page, const uint8_t *
 	slc_dma_transfer(self, (uintptr_t) data, false);
 
 	if (use_ecc) {
-		slc_ecc_copy(oob_ecc, self->ecc_buffer, self->chunk_count);
+		slc_ecc_layout ecc_layout = slc_get_ecc_layout(self, page);
+
+		slc_ecc_copy(oob_ecc, self->ecc_buffer, self->chunk_count, ecc_layout);
 	}
 
 	slc_write_buffer(bed, oob, bed->oob_size);
@@ -488,6 +524,27 @@ bed_status bed_lpc32xx_slc_init(
 
 		part->bed = bed;
 		part->size = bed->size;
+	}
+
+	return status;
+}
+
+bed_status bed_lpc32xx_slc_set_mtd_ecc_area(
+	const bed_partition *part
+)
+{
+	bed_status status;
+	const bed_nand_context *nand = part->bed->context;
+
+	if (nand->read_8 == slc_read_8) {
+		bed_lpc32xx_slc_context *self = nand->context;
+
+		self->mtd_ecc_area_in_pages.begin = bed_address_to_page(&self->part, bed_begin(part));
+		self->mtd_ecc_area_in_pages.size = bed_address_to_page(&self->part, bed_size(part));
+
+		status = BED_SUCCESS;
+	} else {
+		status = BED_ERROR_OP_NOT_SUPPORTED;
 	}
 
 	return status;
