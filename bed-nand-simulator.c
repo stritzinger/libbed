@@ -341,12 +341,11 @@ static uint16_t nand_sim_read_16(bed_device *bed)
 	return value;
 }
 
-static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
+static bed_status nand_sim_read_page(bed_device *bed, uint32_t page, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
 	nand_sim_context *sim = nand->context;
-	uint32_t page = get_page(bed, sim);
 	const uint8_t *nand_data = get_page_data(bed, sim, page);
 	const uint8_t *nand_oob = get_page_oob(bed, sim, page);
 	const uint8_t *nand_ecc = nand_oob + nand->oob_ecc_ranges [0].offset;
@@ -354,6 +353,7 @@ static bed_status nand_sim_read_page(bed_device *bed, uint8_t *data, bool use_ec
 	size_t i;
 
 	assert(sim->io_mode == SIM_IO_DATA);
+	assert(page == get_page(bed, sim));
 
 	memcpy(data, nand_data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	memcpy(oob, nand_oob, OOB_CHUNK_SIZE * sim->ecc_chunks);
@@ -402,12 +402,11 @@ static void nand_sim_write_buffer(bed_device *bed, const uint8_t *data, size_t n
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
+static bed_status nand_sim_write_page(bed_device *bed, uint32_t page, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
 	nand_sim_context *sim = nand->context;
-	uint32_t page = get_page(bed, sim);
 	uint8_t *nand_data = get_page_data(bed, sim, page);
 	uint8_t *nand_oob = get_page_oob(bed, sim, page);
 	uint8_t *nand_ecc = nand_oob + nand->oob_ecc_ranges [0].offset;
@@ -415,6 +414,7 @@ static bed_status nand_sim_write_page(bed_device *bed, const uint8_t *data, bool
 	size_t i;
 
 	assert(sim->io_mode == SIM_IO_DATA);
+	assert(page == get_page(bed, sim));
 
 	nand_sim_memcpy(nand_data, data, ECC_CHUNK_SIZE * sim->ecc_chunks);
 	nand_sim_memcpy(nand_oob, oob, OOB_CHUNK_SIZE * sim->ecc_chunks);

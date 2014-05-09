@@ -342,7 +342,7 @@ static void slc_ecc_copy(uint8_t *ecc, const uint32_t *slc_ecc, size_t count)
 	}
 }
 
-static bed_status slc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
+static bed_status slc_read_page(bed_device *bed, uint32_t page, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -378,7 +378,7 @@ static bed_status slc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status slc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
+static bed_status slc_write_page(bed_device *bed, uint32_t page, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;

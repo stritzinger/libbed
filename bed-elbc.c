@@ -102,7 +102,7 @@ static void elbc_set_ecc_mode(const bed_elbc_context *self, bool use_ecc)
 	bed_elbc_set_ecc_mode(self->elbc, self->bank, ecc_mode);
 }
 
-static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
+static bed_status elbc_read_page(bed_device *bed, uint32_t page, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_elbc_context *self = elbc_get_context(bed);
@@ -129,7 +129,7 @@ static bed_status elbc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status elbc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
+static bed_status elbc_write_page(bed_device *bed, uint32_t page, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_elbc_context *self = elbc_get_context(bed);
