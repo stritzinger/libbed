@@ -7,7 +7,7 @@
  */
 
 /*
- * Copyright (c) 2012 embedded brains GmbH.  All rights reserved.
+ * Copyright (c) 2012-2014 embedded brains GmbH.  All rights reserved.
  *
  *  embedded brains GmbH
  *  Dornierstr. 4
@@ -90,6 +90,7 @@ typedef struct {
 	uint32_t ecc_buffer [BED_LPC32XX_SLC_CHUNK_COUNT_MAX];
 	uint8_t chunk_buffer_0 [BED_LPC32XX_SLC_CHUNK_DATA_SIZE] __attribute__((aligned(32)));
 	uint8_t chunk_buffer_1 [BED_LPC32XX_SLC_CHUNK_DATA_SIZE] __attribute__((aligned(32)));
+	bed_area mtd_ecc_area_in_pages;
 	void *context;
 } bed_lpc32xx_slc_context;
 
@@ -109,6 +110,22 @@ typedef struct {
 bed_status bed_lpc32xx_slc_init(
 	bed_lpc32xx_slc_context *self,
 	const bed_lpc32xx_slc_config *config
+);
+
+/**
+ * @brief Specifies the area in which the MTD ECC layout will be used.
+ *
+ * The SLC uses a three byte ECC per 256 data bytes (Hamming code).  The BED
+ * library stores these three bytes as [A, B, C].  The MTD (used by U-Boot)
+ * stores them as [C, B, A].
+ *
+ * @param[in] part The partition defining device and area.
+ *
+ * @retval BED_SUCCESS Successful operation.
+ * @retval BED_ERROR_OP_NOT_SUPPORTED Invalid device.
+ */
+bed_status bed_lpc32xx_slc_set_mtd_ecc_area(
+	const bed_partition *part
 );
 
 /**

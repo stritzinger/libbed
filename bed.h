@@ -355,7 +355,10 @@ struct bed_device {
 	bed_is_block_valid_method is_block_valid;
 	bed_read_method read;
 	bed_read_oob_method read_oob;
-#ifndef BED_CONFIG_READ_ONLY
+#ifdef BED_CONFIG_READ_ONLY
+	/* Keep structure layout */
+	void *reserved[4];
+#else
 	bed_write_method write;
 	bed_write_oob_method write_oob;
 	bed_erase_method erase;

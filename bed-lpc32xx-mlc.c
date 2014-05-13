@@ -191,7 +191,7 @@ static bed_status mlc_check_ecc_status(
 	return status;
 }
 
-static bed_status mlc_read_page(bed_device *bed, uint8_t *data, bool use_ecc)
+static bed_status mlc_read_page(bed_device *bed, uint32_t page, uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 	bed_nand_context *nand = bed->context;
@@ -256,7 +256,7 @@ static void mlc_write_buffer(bed_device *bed, const uint8_t *data, size_t n)
 }
 
 #ifndef BED_CONFIG_READ_ONLY
-static bed_status mlc_write_page(bed_device *bed, const uint8_t *data, bool use_ecc)
+static bed_status mlc_write_page(bed_device *bed, uint32_t page, const uint8_t *data, bool use_ecc)
 {
 	bed_status status = BED_SUCCESS;
 

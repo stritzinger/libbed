@@ -223,7 +223,7 @@ bed_status bed_nand_read_oob_only_with_trash(bed_device *bed, uint32_t page)
 	bed_nand_context *nand = bed->context;
 
 	(*nand->command)(bed, BED_NAND_CMD_READ_PAGE, page, 0);
-	status = (*nand->read_page)(bed, bed_trash_buffer(bed->page_size), true);
+	status = (*nand->read_page)(bed, page, bed_trash_buffer(bed->page_size), true);
 
 	return status;
 }
@@ -257,7 +257,7 @@ bed_status bed_nand_read_oob(
 
 		if (n != 0) {
 			(*nand->command)(bed, BED_NAND_CMD_READ_PAGE, page, 0);
-			status = (*nand->read_page)(bed, data, oob->mode != BED_OOB_MODE_BLOODY);
+			status = (*nand->read_page)(bed, page, data, oob->mode != BED_OOB_MODE_BLOODY);
 		} else {
 			status = (*nand->read_oob_only)(bed, page);
 		}
@@ -360,7 +360,7 @@ bed_status bed_nand_write_oob(
 		fill_oob(bed, nand, oob);
 		bed_select_chip(bed, chip);
 		(*nand->command)(bed, BED_NAND_CMD_PROGRAM_PAGE, page, 0);
-		status = (*nand->write_page)(bed, data, oob->mode == BED_OOB_MODE_AUTO);
+		status = (*nand->write_page)(bed, page, data, oob->mode == BED_OOB_MODE_AUTO);
 		if (status == BED_SUCCESS) {
 			(*nand->command)(bed, BED_NAND_CMD_PROGRAM_PAGE_2, 0, 0);
 			status = bed_nand_check_status(bed, BED_ERROR_WRITE);
@@ -548,6 +548,7 @@ static bed_status detect_onfi_chip(bed_device *bed)
 
 static bed_status micron_internal_ecc_read_page(
 	bed_device *bed,
+	uint32_t page,
 	uint8_t *data,
 	bool use_ecc
 )
@@ -555,7 +556,7 @@ static bed_status micron_internal_ecc_read_page(
 	bed_status status;
 	bed_nand_context *nand = bed->context;
 
-	status = (*nand->boxed_read_page)(bed, data, false);
+	status = (*nand->boxed_read_page)(bed, page, data, false);
 	if (status == BED_SUCCESS) {
 		uint8_t nand_status = read_status(bed);
 
@@ -576,6 +577,7 @@ static bed_status micron_internal_ecc_read_page(
 #ifndef BED_CONFIG_READ_ONLY
 static bed_status micron_internal_ecc_write_page(
 	bed_device *bed,
+	uint32_t page,
 	const uint8_t *data,
 	bool use_ecc
 )
@@ -585,7 +587,7 @@ static bed_status micron_internal_ecc_write_page(
 	if (use_ecc) {
 		bed_nand_context *nand = bed->context;
 
-		status = (*nand->boxed_write_page)(bed, data, false);
+		status = (*nand->boxed_write_page)(bed, page, data, false);
 	} else {
 		status = BED_ERROR_OOB_MODE;
 	}
