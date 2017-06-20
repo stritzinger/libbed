@@ -305,10 +305,8 @@ bed_status bed_yaffs_initialize_device(
 		self->os_context.lock = bed_yaffs_lock;
 		self->os_context.unlock = bed_yaffs_unlock;
 		self->os_context.unmount = bed_yaffs_unmount;
-		self->os_context.dev = rtems_filesystem_make_dev_t(
-			IMFS_GENERIC_DEVICE_MAJOR_NUMBER,
-			(rtems_device_minor_number) part
-		);
+		self->os_context.dev =
+			rtems_filesystem_make_dev_t_from_pointer(self);
 
 		self->part = part;
 		self->pages_per_chunk = pages_per_chunk;
